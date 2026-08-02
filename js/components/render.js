@@ -22,18 +22,6 @@ export function renderHeader(activeEmployee, finalClosing, pinLockOn) {
     </div>`;
 }
 
-export function renderEmployeeBar(employees, activeId) {
-  if (!employees.length) return "";
-  return `
-    <div class="gpf-employee-bar">
-      ${employees.map((e) => `
-        <button class="gpf-employee-chip ${e.id === activeId ? "active" : ""}" data-action="switch-employee" data-id="${e.id}">
-          👤 ${esc(e.name || "Unnamed")}
-        </button>`).join("")}
-      <button class="gpf-employee-chip" data-action="add-employee">+ Add Employee</button>
-    </div>`;
-}
-
 export function renderTabs(tab, hasEmployee) {
   const t = (id, icon, label) => `
     <button class="gpf-tab-btn ${tab === id ? "active" : ""}" data-action="switch-tab" data-tab="${id}" ${(id === "ledger" || id === "report") && !hasEmployee ? "disabled" : ""}>
@@ -43,6 +31,9 @@ export function renderTabs(tab, hasEmployee) {
 }
 
 export function renderCoverTab(draft, hasLedger) {
+  const yearNum = Number(draft.startYear);
+  const yearValid = draft.startYear !== "" && yearNum >= 1900 && yearNum <= 2200;
+  const canSubmit = draft.name.trim() && (hasLedger || yearValid);
   return `
     <div style="padding-top:6px;">
       <div class="gpf-card">
@@ -60,24 +51,36 @@ export function renderCoverTab(draft, hasLedger) {
             <input class="gpf-input" data-role="draft-field" data-field="gpfNo" value="${esc(draft.gpfNo)}" placeholder="e.g. ABC" />
           </label>
           <label class="gpf-field-label">Starting BPS
-            <select class="gpf-input" data-role="draft-field" data-field="startBps">
+            <select class="gpf-input" data-role="draft-field" data-field="startBps" ${hasLedger ? "disabled" : ""}>
               ${BPS_LIST.map((b) => `<option value="${b}" ${Number(draft.startBps) === b ? "selected" : ""}>BPS ${String(b).padStart(2, "0")}</option>`).join("")}
             </select>
           </label>
           <label class="gpf-field-label">First Fiscal Year (starts July)
-            <input type="number" class="gpf-input" data-role="draft-field" data-field="startYear" value="${esc(draft.startYear)}" placeholder="e.g. 2001" />
-            <div class="gpf-hint">Fund opens as ${fyLabel(Number(draft.startYear) || 0)}</div>
+            <input type="number" class="gpf-input" data-role="draft-field" data-field="startYear" value="${esc(draft.startYear)}" placeholder="e.g. 2017, 2022 — whenever your account opened" ${hasLedger ? "disabled" : ""} />
+            <div class="gpf-hint">${
+              hasLedger
+                ? `Fund opened as ${fyLabel(Number(draft.startYear) || 0)} — set when the passbook was first opened, can't be changed here`
+                : yearValid
+                ? `Fund opens as ${fyLabel(yearNum)}`
+                : "Enter the actual year this GPF account started — not today's year"
+            }</div>
           </label>
         </div>
         ${!hasLedger
-          ? `<button id="open-passbook-btn" class="gpf-btn-primary" style="margin-top:20px;" data-action="start-ledger" ${!draft.name.trim() ? "disabled" : ""}>Open Passbook →</button>`
-          : `<button class="gpf-btn-primary" style="margin-top:20px;" data-action="switch-tab" data-tab="ledger">Continue Ledger →</button>`}
+          ? `<button id="cover-submit-btn" class="gpf-btn-primary" style="margin-top:20px;" data-action="start-ledger" ${!canSubmit ? "disabled" : ""}>Open Passbook →</button>`
+          : `<button id="cover-submit-btn" class="gpf-btn-primary" style="margin-top:20px;" data-action="start-ledger" ${!canSubmit ? "disabled" : ""}>Save Changes</button>`}
       </div>
       <p class="gpf-note">
         Monthly subscription is auto-filled from the BPS rate chart based on the pay-scale revision in effect for each
         fiscal year, and can be overridden per month. Interest is computed as the average of the twelve monthly balances
         multiplied by that year's rate — the standard GPF method.
       </p>
+      ${hasLedger ? `
+        <div class="gpf-danger-zone">
+          <div class="gpf-danger-title">Danger Zone</div>
+          <p class="gpf-danger-text">Permanently delete this passbook and every year of ledger data from this device. This cannot be undone.</p>
+          <button class="gpf-btn-danger-solid" data-action="reset-all">Delete All Data</button>
+        </div>` : ""}
     </div>`;
 }
 
@@ -215,7 +218,7 @@ export function renderLockScreen(mode, digits, error) {
       <div style="width:64px;height:64px;border-radius:50%;border:2px solid #A8792E;display:flex;align-items:center;justify-content:center;font-size:26px;">🔒</div>
       <div>
         <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:700;">
-          ${mode === "setup" ? "Set a PIN to lock GPF Passbook" : "GPF Passbook is locked"}
+          ${mode === "setup" ? "Set a PIN to lock GPF Calculator" : "GPF Calculator is locked"}
         </div>
         <div style="font-size:12.5px;opacity:.75;margin-top:6px;">${mode === "setup" ? "Choose a 4-digit PIN" : "Enter your PIN to continue"}</div>
       </div>
