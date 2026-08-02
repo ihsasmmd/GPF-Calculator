@@ -54,10 +54,10 @@ export function renderCoverTab(draft, hasLedger) {
             <input class="gpf-input" data-role="draft-field" data-field="name" value="${esc(draft.name)}" placeholder="Full name" />
           </label>
           <label class="gpf-field-label">Personal Number
-            <input class="gpf-input" data-role="draft-field" data-field="perNo" value="${esc(draft.perNo)}" placeholder="e.g. 85326974" />
+            <input class="gpf-input" data-role="draft-field" data-field="perNo" value="${esc(draft.perNo)}" placeholder="e.g. 123" />
           </label>
           <label class="gpf-field-label">GPF Reference No.
-            <input class="gpf-input" data-role="draft-field" data-field="gpfNo" value="${esc(draft.gpfNo)}" placeholder="e.g. Edu/BWN/85214" />
+            <input class="gpf-input" data-role="draft-field" data-field="gpfNo" value="${esc(draft.gpfNo)}" placeholder="e.g. ABC" />
           </label>
           <label class="gpf-field-label">Starting BPS
             <select class="gpf-input" data-role="draft-field" data-field="startBps">
