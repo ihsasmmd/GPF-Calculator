@@ -3,7 +3,7 @@ import { newYearRecord, computeAllYears, rateFor } from "./lib/gpfCalc.js";
 import { hashPin, verifyPin } from "./lib/pinLock.js";
 import { shareOrDownloadText, shareOrDownloadBinary, pickTextFile } from "./lib/fileExport.js";
 import {
-  renderHeader, renderEmployeeBar, renderTabs, renderCoverTab, renderRatesTab,
+  renderHeader, renderTabs, renderCoverTab, renderRatesTab,
   renderLedgerTab, renderReportTab, renderLockScreen,
 } from "./components/render.js";
 
@@ -11,7 +11,10 @@ function uid() {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 }
 
-const BLANK_DRAFT = { name: "", perNo: "", gpfNo: "", startBps: 1, startYear: new Date().getFullYear() };
+// This app tracks a single employee's GPF account. The starting fiscal
+// year isn't guessed or defaulted — it's whatever year the employee's
+// GPF account actually opened (e.g. 2017, 2022...), entered by hand.
+const BLANK_DRAFT = { name: "", perNo: "", gpfNo: "", startBps: 1, startYear: "" };
 
 const state = {
   store: loadStore(),
@@ -25,7 +28,11 @@ const state = {
   lockError: "",
 };
 
-if (state.store.employees.length) state.tab = "ledger";
+if (state.store.employees.length) {
+  state.tab = "ledger";
+  const emp = state.store.employees[0];
+  state.draft = { name: emp.name, perNo: emp.perNo, gpfNo: emp.gpfNo, startBps: emp.startBps, startYear: emp.startYear };
+}
 if (state.store.settings.pinLock) state.lockMode = "enter";
 
 const root = document.getElementById("root");
@@ -36,7 +43,7 @@ function persist() {
 }
 
 function activeEmployee() {
-  return state.store.employees.find((e) => e.id === state.store.activeEmployeeId) || null;
+  return state.store.employees[0] || null;
 }
 
 function computedForActive() {
@@ -47,7 +54,7 @@ function computedForActive() {
 function patchEmployee(patchFn) {
   state.store = {
     ...state.store,
-    employees: state.store.employees.map((e) => (e.id === state.store.activeEmployeeId ? patchFn(e) : e)),
+    employees: state.store.employees.map((e, i) => (i === 0 ? patchFn(e) : e)),
   };
   persist();
 }
@@ -77,7 +84,6 @@ function render() {
     <div class="gpf-app">
       <div class="gpf-spine"></div>
       ${renderHeader(emp, finalClosing, state.store.settings.pinLock)}
-      ${renderEmployeeBar(state.store.employees, state.store.activeEmployeeId)}
       ${renderTabs(state.tab, !!emp)}
       <div class="gpf-body">${body}</div>
     </div>`;
@@ -118,15 +124,39 @@ function patchLedgerDisplays() {
 /* ---------------- actions ---------------- */
 function startLedger() {
   if (!state.draft.name.trim()) return;
-  const id = uid();
+  const existing = activeEmployee();
+
+  if (existing) {
+    // Editing an existing (single) employee: only name/perNo/gpfNo are
+    // changeable here — startBps/startYear are locked once the ledger exists.
+    patchEmployee((emp) => ({ ...emp, name: state.draft.name, perNo: state.draft.perNo, gpfNo: state.draft.gpfNo }));
+    state.tab = "ledger";
+    render();
+    return;
+  }
+
   const startYear = Number(state.draft.startYear);
+  if (!startYear || startYear < 1900 || startYear > 2200) return; // needs a real starting year, not guessed
   const startBps = Number(state.draft.startBps);
   const first = newYearRecord(startYear, startBps);
-  const employee = { id, ...state.draft, startYear, startBps, years: [first] };
-  state.store = { ...state.store, employees: [...state.store.employees, employee], activeEmployeeId: id };
+  const employee = { id: uid(), ...state.draft, startYear, startBps, years: [first] };
+  state.store = { ...state.store, employees: [employee], activeEmployeeId: employee.id };
   state.activeYearIdx = 0;
-  state.draft = { ...BLANK_DRAFT };
   state.tab = "ledger";
+  persist();
+  render();
+}
+
+function resetAllData() {
+  const confirmed = window.confirm(
+    "This will permanently delete this passbook and every year of ledger data from this device. This cannot be undone.\n\nContinue?"
+  );
+  if (!confirmed) return;
+  state.store = { employees: [], activeEmployeeId: null, settings: { pinLock: false, pinHash: null } };
+  state.draft = { ...BLANK_DRAFT };
+  state.tab = "cover";
+  state.activeYearIdx = 0;
+  state.reportMsg = "";
   persist();
   render();
 }
@@ -195,9 +225,18 @@ async function restoreBackup() {
   try {
     const text = await pickTextFile();
     const parsed = parseBackup(text);
-    state.store = parsed;
-    state.tab = parsed.employees.length ? "ledger" : "cover";
+    // This app is single-employee; if an older multi-employee backup is
+    // restored, keep only the first account.
+    const employees = parsed.employees.slice(0, 1);
+    state.store = { ...parsed, employees, activeEmployeeId: employees[0]?.id ?? null };
+    state.tab = employees.length ? "ledger" : "cover";
     state.activeYearIdx = 0;
+    if (employees.length) {
+      const emp = employees[0];
+      state.draft = { name: emp.name, perNo: emp.perNo, gpfNo: emp.gpfNo, startBps: emp.startBps, startYear: emp.startYear };
+    } else {
+      state.draft = { ...BLANK_DRAFT };
+    }
     persist();
     state.reportMsg = "Backup restored.";
   } catch (e) {
@@ -264,16 +303,15 @@ root.addEventListener("click", (e) => {
   if (!el) return;
   const action = el.dataset.action;
 
-  if (action === "switch-tab") { state.tab = el.dataset.tab; render(); }
-  else if (action === "start-ledger") startLedger();
-  else if (action === "switch-employee") {
-    state.store = { ...state.store, activeEmployeeId: el.dataset.id };
-    state.activeYearIdx = 0;
-    state.tab = "ledger";
-    persist();
+  if (action === "switch-tab") {
+    state.tab = el.dataset.tab;
+    if (state.tab === "cover") {
+      const emp = activeEmployee();
+      if (emp) state.draft = { name: emp.name, perNo: emp.perNo, gpfNo: emp.gpfNo, startBps: emp.startBps, startYear: emp.startYear };
+    }
     render();
   }
-  else if (action === "add-employee") { state.draft = { ...BLANK_DRAFT }; state.tab = "cover"; render(); }
+  else if (action === "start-ledger") startLedger();
   else if (action === "switch-year") { state.activeYearIdx = Number(el.dataset.idx); render(); }
   else if (action === "add-year") addNextYear();
   else if (action === "remove-year") removeLastYear();
@@ -283,14 +321,19 @@ root.addEventListener("click", (e) => {
   else if (action === "restore-backup") restoreBackup();
   else if (action === "toggle-lock") toggleLock();
   else if (action === "pin-key") onPinKey(el.dataset.key);
+  else if (action === "reset-all") resetAllData();
 });
 
 function handleFieldChange(el) {
   if (el.dataset.role === "draft-field") {
     const field = el.dataset.field;
     state.draft = { ...state.draft, [field]: field === "startBps" ? Number(el.value) : el.value };
-    const btn = document.getElementById("open-passbook-btn");
-    if (btn) btn.disabled = !state.draft.name.trim();
+    const btn = document.getElementById("cover-submit-btn");
+    if (btn) {
+      const isNew = !activeEmployee();
+      const yearOk = !isNew || (Number(state.draft.startYear) >= 1900 && Number(state.draft.startYear) <= 2200);
+      btn.disabled = !state.draft.name.trim() || !yearOk;
+    }
     return;
   }
   if (el.dataset.role === "month-field") {
