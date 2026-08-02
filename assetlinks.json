@@ -1,8 +1,0 @@
-[{
-      "relation": ["delegate_permission/common.handle_all_urls"],
-      "target": {
-        "namespace": "android_app",
-        "package_name": "io.github.ihsasmmd.twa",
-        "sha256_cert_fingerprints": ["4B:48:9C:B8:A5:F5:E0:D1:52:6B:0B:16:AB:4D:5A:E8:D9:F0:59:C1:22:A2:91:F5:84:EC:B2:D3:D0:73:A6:9E"]
-      }
-    }]
