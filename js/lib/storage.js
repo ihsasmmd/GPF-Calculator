@@ -39,7 +39,7 @@ export function serializeForBackup(store) {
 export function parseBackup(text) {
   const parsed = JSON.parse(text);
   if (!parsed || !Array.isArray(parsed.employees)) {
-    throw new Error("This file doesn't look like a GPF Passbook backup.");
+    throw new Error("This file doesn't look like a GPF Calculator backup.");
   }
   return { ...EMPTY_STORE, ...parsed };
 }

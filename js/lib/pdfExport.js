@@ -121,7 +121,7 @@ export function buildEmployeePdf(employee) {
   doc.text(MARGIN_L + 14, stampY + 40, `Rs. ${finalClosing.toLocaleString()}`, { font: "Helvetica-Bold", size: 17 });
 
   doc.setFillColor(...MUTED);
-  doc.text(MARGIN_L, pageH - 24, `Generated ${new Date().toLocaleDateString()} - GPF Passbook`, { font: "Helvetica", size: 7.5 });
+  doc.text(MARGIN_L, pageH - 24, `Generated ${new Date().toLocaleDateString()} - GPF Calculator`, { font: "Helvetica", size: 7.5 });
 
   return doc;
 }
