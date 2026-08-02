@@ -1,7 +1,7 @@
 {
-  "name": "GPF Passbook",
-  "short_name": "GPF Passbook",
-  "description": "Personal General Provident Fund passbook, ledger and final report generator.",
+  "name": "GPF Calculator",
+  "short_name": "GPF Calculator",
+  "description": "Personal General Provident Fund calculator, ledger and final report generator.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

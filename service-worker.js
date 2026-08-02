@@ -1,5 +1,5 @@
 // Bump this on every deploy so clients pick up fresh files.
-const CACHE_VERSION = "gpf-passbook-v2";
+const CACHE_VERSION = "gpf-passbook-v5";
 const APP_SHELL = [
   "./",
   "./index.html",
