@@ -1,5 +1,5 @@
 // Bump this on every deploy so clients pick up fresh files.
-const CACHE_VERSION = "gpf-passbook-v1";
+const CACHE_VERSION = "gpf-passbook-v2";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -10,6 +10,7 @@ const APP_SHELL = [
   "./js/lib/gpfCalc.js",
   "./js/lib/storage.js",
   "./js/lib/pdfExport.js",
+  "./js/lib/pdfWriter.js",
   "./js/lib/fileExport.js",
   "./js/lib/pinLock.js",
   "./js/components/render.js",
